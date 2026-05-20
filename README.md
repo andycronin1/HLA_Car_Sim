@@ -1,15 +1,15 @@
 # HLA Car Sim 
 
-A C++17 car simulation with real-time WebSocket telemetry. The simulation accepts keyboard commands to control a vehicle (start engine, accelerate, brake) and streams vehicle state (latitude, longitude, heading, speed) to a browser-based map client via WebSocket.
+A C++17 car simulation with real-time WebSocket telemetry. The simulation accepts keyboard commands to control a vehicle (start engine, accelerate, steer, brake) and streams vehicle state (latitude, longitude, heading, speed) to a browser-based map client via WebSocket.
 
-Built with a **multi-threaded architecture**: the main thread handles user input while a dedicated simulation thread runs at 20 Hz (50ms tick), processing commands from a thread-safe queue and broadcasting state updates over WebSocket.
+Built with a **multi-threaded architecture**: the main thread handles user input while a dedicated simulation thread runs at 20 Hz (50 ms tick), processing commands from a thread-safe queue, updating vehicle movement each tick, and broadcasting state updates over WebSocket.
 
 ## Architecture
 
 The application uses a **producer-consumer pattern** with two threads:
 
 - **Main Thread (Input Producer)**: Blocks on `std::cin`, reads user commands, and enqueues them to a thread-safe queue protected by `std::mutex`
-- **Simulation Thread (Consumer)**: Runs a fixed 20 Hz update loop (50ms timestep), dequeues one command per tick, executes it on the `Car` object, and broadcasts state via WebSocket
+- **Simulation Thread (Consumer)**: Runs a fixed 20 Hz update loop (50 ms timestep), dequeues one command per tick, executes it on the `Car` object, advances position from speed and heading, and broadcasts state via WebSocket
 
 **Synchronization:**
 - `std::queue<char>` + `std::mutex` — protects command queue from concurrent read/write
@@ -51,8 +51,9 @@ The WebSocket server starts on `ws://127.0.0.1:8080` and the sim thread begins i
 
 **2. Control the car** (in the terminal running the sim):
 ```
-Enter command (h for help): s
-Enter command (h for help): a
+Enter command (h for help): f
+Enter command (h for help): w
+Enter command (h for help): d
 Enter command (h for help): v
 Enter command (h for help): q
 ```
@@ -61,13 +62,13 @@ Enter command (h for help): q
 ```bash
 open data/map.html
 ```
-The map connects to the WebSocket server and displays the car when `v` commands are sent.
+The map connects to the WebSocket server and updates continuously from streamed state.
 
 ## Execution Flow
 
-1. User enters a command (e.g., `s` for start engine) → main thread enqueues to `commandQueue`
-2. At the next 50ms simulation tick, the sim thread dequeues the command and executes it on the `Car`
-3. If `v` (display state) is pressed, the sim thread broadcasts the current vehicle state as JSON over WebSocket
+1. User enters a command (e.g., `f` for start engine) → main thread enqueues to `commandQueue`
+2. At the next 50 ms simulation tick, the sim thread dequeues the command and executes it on the `Car`
+3. On every simulation tick, the car advances based on current speed and heading, then the latest state is broadcast over WebSocket
 4. When user types `q` → main thread enqueues, then waits on `join()` for sim thread to finish
 5. Sim thread processes `q`, sets `running = false`, exits its loop
 6. `join()` returns, main thread stops the server and exits
@@ -76,18 +77,21 @@ The map connects to the WebSocket server and displays the car when `v` commands 
 
 | Key | Action |
 |-----|--------|
-| `s` | Start engine |
-| `a` | Accelerate (increase speed by 10 mps) |
-| `w` | Move forward by 1 unit |
+| `f` | Start engine |
+| `w` | Accelerate (increase speed by 10 m/s) |
+| `a` | Steer left (decrease heading by 10 degrees) |
+| `d` | Steer right (increase heading by 10 degrees) |
 | `b` | Brake (stop immediately) |
-| `d` | Display current speed |
-| `v` | Display vehicle state + broadcast over WebSocket |
+| `i` | Display current speed |
+| `v` | Display vehicle state in terminal |
+| `o` | Reserved (shown in menu, not currently implemented) |
+| `e` | Reserved (shown in menu, not currently implemented) |
 | `h` | Show commands |
 | `q` | Quit |
 
 ## Map Client
 
-`data/map.html` is a Leaflet.js map that connects to the WebSocket server. When the `v` command is used in the sim, the car's position is sent as JSON and the map updates in real time:
+`data/map.html` is a Leaflet.js map that connects to the WebSocket server. The simulation thread pushes JSON state at 20 Hz, so the map updates in real time:
 
 - The car is rendered as a **directional SVG icon** that rotates with the vehicle's heading
 - The map pans to keep the car in view
