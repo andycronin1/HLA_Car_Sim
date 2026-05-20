@@ -32,7 +32,7 @@ void Car::StartEngine() {
 }
 
 // Accelerate
-void Car::Accelerate(double amount, double time) {
+void Car::Accelerate(double amount) {
     if (engineStart_) {
         VehicleState_.speed_mps += amount; // Simple acceleration model: speed increases by amount * time
         std::cout << name_ << " accelerated by " << amount << " mps." << "New speed: " << VehicleState_.speed_mps << " mps." << std::endl;
@@ -63,9 +63,9 @@ void Car::UpdatePosition(double latitude, double longitude) {
 
 }
 
-void Car::UpdateHeading(double heading) {
-    VehicleState_.heading = heading;
-    std::cout << name_ << " heading updated to: " << heading << " degrees." << std::endl;
+void Car::UpdateHeading(double heading_interval) {
+    VehicleState_.heading = VehicleState_.heading + heading_interval;
+    std::cout << name_ << " heading updated to: " << VehicleState_.heading << " degrees." << std::endl;
 }
 
 void Car::DisplayVehicleState() const {
@@ -76,8 +76,10 @@ void Car::DisplayVehicleState() const {
     std::cout << "  Speed: " << VehicleState_.speed_mps << " mps" << std::endl;
 }
 
-void Car::MoveForward() {
-    double distance = 1; 
+void Car::MoveForward(double dtSeconds) {
+
+    double distance = VehicleState_.speed_mps * dtSeconds;
+
     // Simple movement model: move forward based on current heading and speed
     double radians = VehicleState_.heading * (3.14159265358979323846 / 180.0); // Convert heading to radians
     double deltaLatitude = distance * cos(radians) / 111320; // Approximate conversion from meters to degrees latitude
@@ -86,9 +88,8 @@ void Car::MoveForward() {
     VehicleState_.latitude += deltaLatitude;
     VehicleState_.longitude += deltaLongitude;
 
-    Car::DisplayVehicleState();
+    // Car::DisplayVehicleState();
 }
-
 
 
 // Getter for VehicleState

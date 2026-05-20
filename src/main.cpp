@@ -25,12 +25,14 @@ struct SimObjects {
 // Function to display available commands
 void displayCommands() {
 std::cout << "\n--- Car Control Commands ---" << std::endl;
-std::cout << "  's' : Start Engine" << std::endl;
+std::cout << "  'f' : Start Engine" << std::endl;
 std::cout << "  'o' : Stop Engine" << std::endl;
-std::cout << "  'w' : Move Forward by 1" << std::endl;
-std::cout << "  'a' : Accelerate (increase speed)" << std::endl;
+std::cout << "  'w' : Accelerate by 1m/s" << std::endl;
+std::cout << "  'd' : Steer right by 5 degrees" << std::endl;
+std::cout << "  'a' : Steer left by 5 degrees" << std::endl;
+std::cout << "  'e' : Accelerate (increase speed)" << std::endl;
 std::cout << "  'b' : Brake (stop immediately)" << std::endl;
-std::cout << "  'd' : Display Current Speed" << std::endl;
+std::cout << "  'i' : Display Current Speed" << std::endl;
 std::cout << "  'v' : Display Vehicle State" << std::endl;
 std::cout << "  'h' : Show Commands" << std::endl;
 std::cout << "  'q' : Quit" << std::endl;
@@ -60,33 +62,29 @@ void simFunction(SimObjects& simObjects, ix::WebSocketServer& server) {
             }
 
             // Execute command
-            if (command == 's') simObjects.myCar.StartEngine();
-            else if (command == 'a') simObjects.myCar.Accelerate(10.0, 10.0);
+            if (command == 'f') simObjects.myCar.StartEngine();
+            else if (command == 'w') simObjects.myCar.Accelerate(10.0);
             else if (command == 'b') simObjects.myCar.Brake();
-            else if (command == 'd') simObjects.myCar.DisplaySpeed();
-            else if (command == 'v') { 
-                simObjects.myCar.DisplayVehicleState();
-                    auto state = simObjects.myCar.getVehicleState();
-                std::string json = "{\"lat\":"     + std::to_string(state.latitude)  +
-                                ",\"lon\":"     + std::to_string(state.longitude) +
-                                ",\"heading\":" + std::to_string(state.heading)   +
-                                ",\"speed\":"   + std::to_string(state.speed_mps) + "}";
-                for (auto& client : server.getClients())
-                    client->send(json);
-                }
-            else if (command == 'w') {
-                simObjects.myCar.MoveForward();
-                auto state = simObjects.myCar.getVehicleState(); 
-                std::string json = "{\"lat\":"     + std::to_string(state.latitude)  +
-                                ",\"lon\":"     + std::to_string(state.longitude) +
-                                ",\"heading\":" + std::to_string(state.heading)   +
-                                ",\"speed\":"   + std::to_string(state.speed_mps) + "}";
-                for (auto& client : server.getClients())
-                    client->send(json);
-            }
+            else if (command == 'i') simObjects.myCar.DisplaySpeed();
+            else if (command == 'v') simObjects.myCar.DisplayVehicleState();
+            else if (command == 'd') simObjects.myCar.UpdateHeading(10);
+            else if (command == 'a') simObjects.myCar.UpdateHeading(-10);
             else if (command == 'q') {
                 running = false;
             }
+
+            // Move forward at the correct speed and heading. if running @ 20hz, it should be distance/20 meters per tick. 
+            simObjects.myCar.MoveForward(0.05);
+
+            auto state = simObjects.myCar.getVehicleState();
+            std::string json = "{\"lat\":"     + std::to_string(state.latitude)  +
+                            ",\"lon\":"     + std::to_string(state.longitude) +
+                            ",\"heading\":" + std::to_string(state.heading)   +
+                            ",\"speed\":"   + std::to_string(state.speed_mps) + "}";
+            for (auto& client : server.getClients())
+                client->send(json);
+            
+
 
             lastTime = now;
         }
@@ -175,6 +173,7 @@ int main() {
     server.start();
 
     // Automatically open the map client in Chrome
+    // This won't work if we want to dockerise this as containers are isolated from a machines OS. We'll need to run chrome from the run.sh file 
     system("open -a 'Google Chrome' data/map.html");
 
     // --------- End WebSocket Setup ---------

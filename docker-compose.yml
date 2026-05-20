@@ -1,0 +1,7 @@
+services:
+  hla-sim:
+    build: .
+    ports:
+      - "8080:8080"   # Expose WebSocket server to host
+    stdin_open: true  # Keep stdin open for keyboard commands
+    tty: true         # Allocate a pseudo-TTY (needed for interactive input)
