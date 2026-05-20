@@ -24,15 +24,16 @@ public:
 
     // Public Member Functions
     void StartEngine();
-    void Accelerate(double amount, double time); 
+    void Accelerate(double amount); 
     void Brake();
     void DisplaySpeed() const; // Renamed to match C++ convention
     void DisplayVehicleState() const; // function to display all vehicle state information
     void MoveForward(double distance); // Move forward by a certain distance based on current heading and speed
+    void rotateCar(double heading);
 
     // Update Position and Heading 
     void UpdatePosition(double latitude, double longitude);
-    void UpdateHeading(double heading);
+    void UpdateHeading(double heading_interval);
     void MoveForward(); // Move forward by a certain distance based on current heading and speed
 
     // Getter Functions
